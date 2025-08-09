@@ -71,13 +71,30 @@ jobs:
         with:
           flutter-version: '3.16.0'
           channel: 'stable'
+      - name: Install macOS dependencies
+        run: |
+          brew install create-dmg
       - run: flutter config --enable-macos-desktop
       - run: flutter pub get
       - run: flutter build macos --release
-      - name: Create Release Zip
+      - name: Create DMG
         run: |
           cd build/macos/Build/Products/Release
-          zip -r ../../../../macos-release.zip roktodan.app
+          create-dmg \
+            --volname "RoktoDan" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "roktodan.app" 200 190 \
+            --hide-extension "roktodan.app" \
+            --app-drop-link 600 185 \
+            "../../../../RoktoDan-Installer.dmg" \
+            "roktodan.app/"
+      - name: Upload macOS Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-release
+          path: build/RoktoDan-Installer.dmg
       - name: Upload macOS Build
         uses: actions/upload-artifact@v3
         with:
@@ -91,7 +108,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgtk-3-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libblkid-dev libsecret-1-dev libolm-dev libappindicator3-dev
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.16.0'
@@ -132,7 +149,7 @@ jobs:
           files: |
             releases/android-release/app-release.apk
             releases/windows-release/windows-release.zip
-            releases/macos-release/macos-release.zip
+            releases/macos-release/RoktoDan-Installer.dmg
             releases/linux-release/linux-release.tar.gz
           draft: false
           prerelease: false
