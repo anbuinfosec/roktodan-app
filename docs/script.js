@@ -21,6 +21,10 @@ function formatDate(dateString) {
 async function getAllReleases() {
     try {
         const response = await fetch(`${GITHUB_API}/releases`);
+        if (!response.ok) {
+            console.error('Failed to fetch releases:', response.statusText);
+            return [];
+        }
         const data = await response.json();
         return data;
     } catch (error) {
@@ -32,6 +36,10 @@ async function getAllReleases() {
 async function getLatestRelease() {
     try {
         const response = await fetch(`${GITHUB_API}/releases/latest`);
+        if (!response.ok) {
+            console.error('Failed to fetch latest release:', response.statusText);
+            return null;
+        }
         const data = await response.json();
         return data;
     } catch (error) {
@@ -41,15 +49,24 @@ async function getLatestRelease() {
 }
 
 function getAssetForPlatform(release, platform) {
+    if (!release || !release.assets) return null;
+
     switch (platform) {
         case 'android':
             return release.assets.find(a => a.name.endsWith('.apk'));
-        case 'windows':
-            return release.assets.find(a => a.name.endsWith('.zip') && a.name.includes('windows'));
         case 'macos':
-            return release.assets.find(a => a.name.endsWith('.zip') && a.name.includes('macos'));
+            // Support .app bundle, zipped .zip, or .dmg installers
+            return release.assets.find(a =>
+                a.name.endsWith('.app') || a.name.endsWith('.zip') || a.name.endsWith('.dmg')
+            );
         case 'linux':
-            return release.assets.find(a => a.name.endsWith('.tar.gz'));
+            // Support .deb, .tar.gz, .AppImage, .zip etc
+            return release.assets.find(a =>
+                a.name.endsWith('.deb') ||
+                a.name.endsWith('.tar.gz') ||
+                a.name.endsWith('.AppImage') ||
+                a.name.endsWith('.zip')
+            );
         default:
             return null;
     }
@@ -87,34 +104,45 @@ async function updateUI() {
     if (!release) return;
 
     // Update version info for each platform
-    ['android', 'windows', 'macos', 'linux'].forEach(platform => {
+    ['android', 'linux', 'macos'].forEach(platform => {
         const asset = getAssetForPlatform(release, platform);
+        const versionElem = document.getElementById(`${platform}-version`);
+        const sizeElem = document.getElementById(`${platform}-size`);
         if (asset) {
-            document.getElementById(`${platform}-version`).textContent = release.tag_name;
-            document.getElementById(`${platform}-size`).textContent = formatSize(asset.size);
+            if (versionElem) versionElem.textContent = release.tag_name;
+            if (sizeElem) sizeElem.textContent = formatSize(asset.size);
         } else {
-            document.getElementById(`${platform}-version`).textContent = 'Not available';
-            document.getElementById(`${platform}-size`).textContent = '';
+            if (versionElem) versionElem.textContent = 'Not available';
+            if (sizeElem) sizeElem.textContent = '';
         }
     });
 
     // Update changelog
     const changelogContent = document.getElementById('changelog-content');
-    changelogContent.innerHTML = marked.parse(release.body || 'No changelog available');
+    if (changelogContent) {
+        changelogContent.innerHTML = marked.parse(release.body || 'No changelog available');
+    }
 
     // Update auto-detect banner
     const detectedPlatform = detectPlatform();
     if (detectedPlatform) {
         const asset = getAssetForPlatform(release, detectedPlatform);
         if (asset) {
-            document.getElementById('auto-detect-banner').classList.remove('hidden');
-            document.getElementById('platform-name').textContent = getPlatformName(detectedPlatform);
-            document.getElementById('auto-download-button').onclick = () => downloadLatest(detectedPlatform);
+            const banner = document.getElementById('auto-detect-banner');
+            if (banner) banner.classList.remove('hidden');
+            const platformNameElem = document.getElementById('platform-name');
+            if (platformNameElem) platformNameElem.textContent = getPlatformName(detectedPlatform);
+            const autoDownloadBtn = document.getElementById('auto-download-button');
+            if (autoDownloadBtn) {
+                autoDownloadBtn.onclick = () => downloadLatest(detectedPlatform);
+            }
         }
     }
 
     // Update all releases section
     const releases = await getAllReleases();
+    if (!releases || !Array.isArray(releases)) return;
+
     const releasesListHtml = releases.map(release => `
         <div class="release-item">
             <div class="release-header">
@@ -125,43 +153,41 @@ async function updateUI() {
                 ${marked.parse(release.body || 'No release notes available')}
             </div>
             <div class="release-downloads">
-                ${['android', 'windows', 'macos', 'linux']
-                    .map(platform => {
-                        const asset = getAssetForPlatform(release, platform);
-                        if (!asset) return '';
-                        return `
-                            <a href="${asset.browser_download_url}" class="download-item">
-                                <img src="images/${platform}.svg" alt="${platform}" class="download-icon">
-                                <span>${getPlatformName(platform)}</span>
-                                <span class="size">${formatSize(asset.size)}</span>
-                            </a>
-                        `;
-                    })
-                    .join('')}
+                ${['android', 'linux', 'macos'].map(platform => {
+                    const asset = getAssetForPlatform(release, platform);
+                    if (!asset) return '';
+                    return `
+                        <a href="${asset.browser_download_url}" class="download-item" target="_blank" rel="noopener noreferrer">
+                            <img src="images/${platform}.svg" alt="${platform}" class="download-icon">
+                            <span>${getPlatformName(platform)}</span>
+                            <span class="size">${formatSize(asset.size)}</span>
+                        </a>
+                    `;
+                }).join('')}
             </div>
         </div>
     `).join('');
-    
-    document.getElementById('releases-list').innerHTML = releasesListHtml;
+
+    const releasesListElem = document.getElementById('releases-list');
+    if (releasesListElem) releasesListElem.innerHTML = releasesListHtml;
 }
 
 function detectPlatform() {
     const userAgent = navigator.userAgent.toLowerCase();
-    
+
     // Primary check for Android
     if (/android/i.test(userAgent)) {
         document.body.classList.add('platform-android');
         return 'android';
     }
-    // Use navigator.platform for additional Android detection
+    // Additional Android detection from platform string
     if (navigator.platform && /linux armv|aarch64/i.test(navigator.platform)) {
         document.body.classList.add('platform-android');
         return 'android';
     }
-    
+
     if (/iphone|ipad|ipod/i.test(userAgent)) return 'ios';
     if (/macintosh/i.test(userAgent)) return 'macos';
-    if (/windows/i.test(userAgent)) return 'windows';
     if (/linux/i.test(userAgent)) return 'linux';
     return null;
 }
@@ -169,9 +195,8 @@ function detectPlatform() {
 function getPlatformName(platform) {
     const names = {
         android: 'Android',
-        windows: 'Windows',
-        macos: 'macOS',
         linux: 'Linux',
+        macos: 'macOS',
         ios: 'iOS'
     };
     return names[platform] || platform;
