@@ -27,7 +27,7 @@ jobs:
         run: flutter build apk --release --split-per-abi
 
       - name: Upload Android APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-apks
           path: build/app/outputs/apk/release/*.apk
@@ -56,7 +56,7 @@ jobs:
         run: flutter build macos --release
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-app
           path: build/macos/Build/Products/Release/*.app
@@ -87,18 +87,16 @@ jobs:
       - name: Build Linux (Release)
         run: flutter build linux --release
 
-      # Optional: Build .deb package if you have a packaging script
+      # Uncomment and adjust if you create a .deb package with a script
       # - name: Build .deb package
-      #   run: |
-      #     ./scripts/build_deb.sh   # Your script to create .deb in a known path
+      #   run: ./scripts/build_deb.sh
 
-      - name: Upload Linux artifacts (include .deb if generated)
-        uses: actions/upload-artifact@v3
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: linux-app
           path: |
             build/linux/x64/release/bundle/*
-            # uncomment below if you build .deb and path is known
             # path/to/your/package.deb
 
   upload-release:
@@ -111,24 +109,24 @@ jobs:
 
     steps:
       - name: Download Android APK artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: android-apks
           path: ./artifacts/android
 
       - name: Download macOS artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: macos-app
           path: ./artifacts/macos
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: linux-app
           path: ./artifacts/linux
 
-      - name: List all downloaded artifacts (for debug)
+      - name: List all downloaded artifacts
         run: ls -R ./artifacts
 
       - name: Upload all artifacts to GitHub Release
@@ -137,7 +135,7 @@ jobs:
           artifacts: |
             ./artifacts/android/*.apk
             ./artifacts/macos/*.app
-            ./artifacts/linux/*  # will include .deb if present
+            ./artifacts/linux/*
           token: ${{ secrets.SECRET_TOKEN }}
           tag: ${{ github.ref_name }}
           allowUpdates: true
