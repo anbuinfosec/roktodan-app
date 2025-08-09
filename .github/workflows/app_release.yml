@@ -3,7 +3,7 @@ name: Release Build
 on:
   push:
     tags:
-      - 'v*' # Trigger only when pushing a tag starting with "v"
+      - 'v*'  # Trigger only on tags starting with "v"
 
 jobs:
   build-android:
@@ -18,7 +18,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
-          channel: 'stable'
+          channel: stable
 
       - name: Install dependencies
         run: flutter pub get
@@ -26,15 +26,14 @@ jobs:
       - name: Build APK (Release)
         run: flutter build apk --release --split-per-abi
 
-      - name: Upload APK to GitHub Release
-        uses: ncipollo/release-action@v1
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v3
         with:
-          artifacts: "build/app/outputs/apk/release/*.apk"
-          token: ${{ secrets.SECRET_TOKEN }}
-          allowUpdates: true
+          name: android-apks
+          path: build/app/outputs/apk/release/*.apk
 
   build-macos:
-    name: Build macOS App
+    name: Build macOS app
     runs-on: macos-latest
 
     steps:
@@ -45,7 +44,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
-          channel: 'stable'
+          channel: stable
 
       - name: Install dependencies
         run: flutter pub get
@@ -56,15 +55,14 @@ jobs:
       - name: Build macOS (Release)
         run: flutter build macos --release
 
-      - name: Upload macOS build to GitHub Release
-        uses: ncipollo/release-action@v1
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v3
         with:
-          artifacts: "build/macos/Build/Products/Release/*.app"
-          token: ${{ secrets.SECRET_TOKEN }}
-          allowUpdates: true
+          name: macos-app
+          path: build/macos/Build/Products/Release/*.app
 
   build-linux:
-    name: Build Linux App
+    name: Build Linux app
     runs-on: ubuntu-latest
 
     steps:
@@ -78,7 +76,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
-          channel: 'stable'
+          channel: stable
 
       - name: Install dependencies
         run: flutter pub get
@@ -89,9 +87,50 @@ jobs:
       - name: Build Linux (Release)
         run: flutter build linux --release
 
-      - name: Upload Linux build to GitHub Release
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-app
+          path: build/linux/x64/release/bundle/*
+
+  upload-release:
+    name: Upload all artifacts to GitHub Release
+    needs:
+      - build-android
+      - build-macos
+      - build-linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Android APK artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: android-apks
+          path: ./artifacts/android
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-app
+          path: ./artifacts/macos
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-app
+          path: ./artifacts/linux
+
+      - name: List all downloaded artifacts (for debug)
+        run: ls -R ./artifacts
+
+      - name: Upload all artifacts to GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/linux/x64/release/bundle/*"
+          artifacts: |
+            ./artifacts/android/*.apk
+            ./artifacts/macos/*.app
+            ./artifacts/linux/*
           token: ${{ secrets.SECRET_TOKEN }}
+          tag: ${{ github.ref_name }}
           allowUpdates: true
+          generateReleaseNotes: true
