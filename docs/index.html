@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoktoDan App Download</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RoktoDan App</h1>
+            <div id="auto-detect-banner" class="hidden">
+                <p>Download for your device:</p>
+                <button id="auto-download-button" class="primary-button">Download for <span id="platform-name"></span></button>
+            </div>
+            <p class="subtitle">or choose your platform</p>
+        </header>
+        <main>
+            <div class="download-grid">
+                <div class="download-card" id="android-card">
+                    <img src="images/android.svg" alt="Android">
+                    <h2>Android</h2>
+                    <div class="version-info">
+                        <span class="version" id="android-version">Loading...</span>
+                        <span class="size" id="android-size"></span>
+                    </div>
+                    <button onclick="downloadLatest('android')" class="download-button">Download APK</button>
+                </div>
+                <div class="download-card" id="windows-card">
+                    <img src="images/windows.svg" alt="Windows">
+                    <h2>Windows</h2>
+                    <div class="version-info">
+                        <span class="version" id="windows-version">Loading...</span>
+                        <span class="size" id="windows-size"></span>
+                    </div>
+                    <button onclick="downloadLatest('windows')" class="download-button">Download EXE</button>
+                </div>
+                <div class="download-card" id="macos-card">
+                    <img src="images/macos.svg" alt="macOS">
+                    <h2>macOS</h2>
+                    <div class="version-info">
+                        <span class="version" id="macos-version">Loading...</span>
+                        <span class="size" id="macos-size"></span>
+                    </div>
+                    <button onclick="downloadLatest('macos')" class="download-button">Download APP</button>
+                </div>
+                <div class="download-card" id="linux-card">
+                    <img src="images/linux.svg" alt="Linux">
+                    <h2>Linux</h2>
+                    <div class="version-info">
+                        <span class="version" id="linux-version">Loading...</span>
+                        <span class="size" id="linux-size"></span>
+                    </div>
+                    <button onclick="downloadLatest('linux')" class="download-button">Download</button>
+                </div>
+            </div>
+            <div class="releases-section">
+                <h2>All Releases</h2>
+                <div id="releases-list" class="releases-grid">
+                    Loading releases...
+                </div>
+            </div>
+            <div id="changelog">
+                <h2>Latest Changes</h2>
+                <div id="changelog-content">Loading...</div>
+            </div>
+        </main>
+        <footer>
+            <p>© 2025 RoktoDan. All rights reserved.</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

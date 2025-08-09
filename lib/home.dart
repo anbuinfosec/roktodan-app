@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  final void Function(String) onThemeChanged;
+  const Home({super.key, required this.onThemeChanged});
 
   @override
   State<Home> createState() => _HomeState();
@@ -31,14 +31,42 @@ class _HomeState extends State<Home> {
   void _initializeWebView() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        'ThemeChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          widget.onThemeChanged(message.message);
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) => _setLoading(true),
-          onPageFinished: (_) => _setLoading(false),
+          onPageFinished: (url) {
+            _setLoading(false);
+            _setupThemeListener();
+          },
           onWebResourceError: (_) => _handleWebError(),
         ),
       )
       ..loadRequest(Uri.parse('https://roktodan.xyz'));
+  }
+
+  Future<void> _setupThemeListener() async {
+    await _controller.runJavaScript('''
+      function sendThemeToApp() {
+        const theme = localStorage.getItem('theme') || 'system';
+        ThemeChannel.postMessage(theme);
+      }
+      
+      // Listen for changes in localStorage
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'theme') {
+          sendThemeToApp();
+        }
+      });
+      
+      // Initial theme check
+      sendThemeToApp();
+    ''');
   }
 
   Future<void> _checkInitialConnectivity() async {
